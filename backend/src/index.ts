@@ -41,15 +41,47 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// CORS
+/* -------------------------------------------
+   🔥 UPDATED CORS CONFIG (FULL FIX)
+------------------------------------------- */
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+
+  // Your main Vercel domain
+  "https://team-sync1.vercel.app",
+
+  // Your current preview deployment domain
+  "https://team-sync1-linganagoudas-projects-8a784c04.vercel.app",
+];
+
+// CORS Middleware
 app.use(
   cors({
-    origin: config.FRONTEND_ORIGIN,
+    origin: function (origin, callback) {
+      // Allow server-to-server requests or mobile apps (no origin)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.error("❌ CORS BLOCKED ORIGIN:", origin);
+      return callback(new Error("CORS not allowed for this origin"));
+    },
     credentials: true,
   })
 );
 
-// ---------- FIXED PUBLIC ROOT ROUTE ----------
+// Preflight request support
+app.options("*", cors());
+
+/* -------------------------------------------
+   ROUTES
+------------------------------------------- */
+
+// Public
 app.get("/", (req, res) => {
   return res.status(HTTPSTATUS.OK).json({
     status: "ok",
@@ -57,7 +89,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// ---------- PROTECTED ROUTES ----------
+// Protected routes
 app.use(`${BASE_PATH}/auth`, authRoutes);
 app.use(`${BASE_PATH}/user`, passportAuthenticateJWT, userRoutes);
 app.use(`${BASE_PATH}/workspace`, passportAuthenticateJWT, workspaceRoutes);
